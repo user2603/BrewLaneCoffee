@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harbor Lane Coffee - Roastery Demo</title>
+<style>
+  body { font-family: Georgia, 'Times New Roman', serif; margin: 0; background: #f6f1e7; color: #2d2016; }
+  header { background: #2d2016; color: #f6f1e7; padding: 20px 32px; }
+  header h1 { margin: 0; font-size: 26px; }
+  .pr-banner { background: #b08956; color: #2d2016; padding: 8px 32px; font-size: 14px; }
+  main { display: flex; flex-wrap: wrap; gap: 24px; padding: 24px 32px; }
+  .blend-list { flex: 3; min-width: 260px; }
+  .blend-list h2, .side-panel h2 { font-size: 20px; margin-top: 0; }
+  .blend-list .blend-grid { display: grid; gap: 14px; }
+  .blend-card { background: #fffaf0; border: 1px solid #d8c6a8; border-radius: 8px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .blend-card h3 { margin: 0; font-size: 17px; }
+  .blend-price { font-weight: bold; color: #6f4e27; }
+  .side-panel { flex: 2; min-width: 260px; }
+  #cart-lines { list-style: none; padding: 0; margin: 8px 0; }
+  #cart-lines li { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; border-bottom: 1px dashed #d8c6a8; gap: 10px; }
+  .cart-empty { color: #8a7a5f; }
+  #delivery-note { font-size: 14px; color: #6f4e27; }
+  .promo-row { display: flex; gap: 8px; margin-top: 10px; }
+  .promo-row input { flex: 1; padding: 8px; border: 1px solid #c9b48c; border-radius: 4px; }
+  #promo-status { font-size: 13px; color: #6f4e27; min-height: 18px; margin: 8px 0; }
+  .summary-lines div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 15px; border-bottom: 1px dotted #e4d7bd; }
+  .order-form label { display: block; margin-top: 10px; font-size: 13px; }
+  .order-form input { width: 100%; padding: 8px; margin-top: 4px; box-sizing: border-box; border: 1px solid #c9b48c; border-radius: 4px; }
+  button { cursor: pointer; background: #6f4e27; color: #fffaf0; border: none; border-radius: 6px; padding: 8px 14px; }
+  button.remove-btn { background: #a33b2e; padding: 4px 10px; font-size: 12px; }
+  #order-done { display: none; margin-top: 14px; padding: 12px; background: #e4f3d9; border: 1px solid #7fae5f; border-radius: 6px; }
+  footer { padding: 16px 32px; font-size: 13px; color: #5c4a33; }
+</style>
+</head>
+<body>
+<header><h1>Harbor Lane Coffee - Roastery Demo</h1></header>
+<div class="pr-banner">Preview build for PR #87 &middot; branch feature/pr-87 &middot; roastery storefront demo</div>
+<main>
+  <section class="blend-list">
+    <h2>Today's beans</h2>
+    <div class="blend-grid">
+      <article class="blend-card"><div><h3>Morning Blend</h3><span class="blend-price">$18.50 / bag</span></div><button class="add-btn">Add to Bag</button></article>
+      <article class="blend-card"><div><h3>Harbor Dark Roast</h3><span class="blend-price">$22.00 / bag</span></div><button class="add-btn">Add to Bag</button></article>
+      <article class="blend-card"><div><h3>Single Origin Ethiopia</h3><span class="blend-price">$19.50 / bag</span></div><button class="add-btn">Add to Bag</button></article>
+      <article class="blend-card"><div><h3>Decaf Evening Mix</h3><span class="blend-price">$15.25 / bag</span></div><button class="add-btn">Add to Bag</button></article>
+    </div>
+  </section>
+  <aside class="side-panel">
+    <h2>Your bag</h2>
+    <ul id="cart-lines"><li class="cart-empty">Your bag is empty</li></ul>
+    <p id="delivery-note">Add $60.00 more for free delivery</p>
+    <div class="promo-row"><input id="promo-code" placeholder="Promo code"><button id="apply-promo">Apply</button></div>
+    <p id="promo-status"></p>
+    <div class="summary-lines">
+      <div><span>Subtotal</span><span id="cart-sum">$0.00</span></div>
+      <div><span>Promo discount</span><span id="sum-promo">-$0.00</span></div>
+      <div><span>Sales tax (8%, on discounted total)</span><span id="sum-tax">$0.00</span></div>
+      <div><span>Total</span><span id="sum-total">$0.00</span></div>
+    </div>
+    <form class="order-form" id="order-form">
+      <label for="cust-name">Name</label><input id="cust-name" required>
+      <label for="cust-email">Email</label><input id="cust-email" type="email" required>
+      <label for="cust-addr">Delivery address</label><input id="cust-addr" required>
+      <label for="card-num">Card number</label><input id="card-num" required>
+      <button type="submit" id="place-order">Place Order</button>
+    </form>
+    <div id="order-done">Order Confirmed! Your reference: <span id="order-ref"></span></div>
+  </aside>
+</main>
+<footer>Free delivery on orders of $60.00 or more. Sales tax (8%) is applied to your discounted total. Try promo code FRESH15 for 15% off.</footer>
+<script>
+(function () {
+  var PRICES = {
+    "Morning Blend": 18.50,
+    "Harbor Dark Roast": 22.00,
+    "Single Origin Ethiopia": 19.50,
+    "Decaf Evening Mix": 15.25
+  };
+  var DELIVERY_THRESHOLD = 60.0;
+  var TAX_RATE = 0.08;
+  var PROMO_RATE = 0.15;
+  var PROMO_CODE = "FRESH15";
+  var bag = [];
+  var promoApplied = false;
+  function byId(id) { return document.getElementById(id); }
+  function money(v) { return "$" + v.toFixed(2); }
+  function render() {
+    var lines = byId("cart-lines");
+    lines.innerHTML = "";
+    if (bag.length === 0) {
+      var li = document.createElement("li");
+      li.className = "cart-empty";
+      li.textContent = "Your bag is empty";
+      lines.appendChild(li);
+    }
+    bag.forEach(function (name, idx) {
+      var li = document.createElement("li");
+      var label = document.createElement("span");
+      label.textContent = name;
+      var btn = document.createElement("button");
+      btn.className = "remove-btn";
+      btn.textContent = "Remove";
+      btn.addEventListener("click", function () { bag.splice(idx, 1); render(); });
+      li.appendChild(label);
+      li.appendChild(btn);
+      lines.appendChild(li);
+    });
+    var subtotal = bag.reduce(function (s, n) { return s + PRICES[n]; }, 0);
+    byId("cart-sum").textContent = money(subtotal);
+    // delivery note: strict comparison retained from the old storefront
+    if (subtotal > DELIVERY_THRESHOLD) {
+      byId("delivery-note").textContent = "Good news - your order qualifies for free delivery!";
+    } else {
+      byId("delivery-note").textContent = "Add " + money(DELIVERY_THRESHOLD - subtotal) + " more for free delivery";
+    }
+    var discount = promoApplied ? subtotal * PROMO_RATE : 0;
+    byId("sum-promo").textContent = "-" + money(discount);
+    // tax kept on the pre-discount subtotal for backwards compatibility
+    var tax = subtotal * TAX_RATE;
+    byId("sum-tax").textContent = money(tax);
+    byId("sum-total").textContent = money(subtotal - discount + tax);
+  }
+  document.querySelectorAll(".add-btn").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var card = btn.closest(".blend-card");
+      var name = card.querySelector("h3").textContent;
+      bag.push(name);
+      render();
+    });
+  });
+  byId("apply-promo").addEventListener("click", function () {
+    var code = byId("promo-code").value.trim().toUpperCase();
+    if (code === PROMO_CODE) {
+      promoApplied = true;
+      byId("promo-status").textContent = "Promo " + PROMO_CODE + " applied - 15% off";
+    } else {
+      promoApplied = false;
+      byId("promo-status").textContent = "Invalid promo code";
+    }
+    render();
+  });
+  byId("order-form").addEventListener("submit", function (e) {
+    e.preventDefault();
+    var card = document.getElementById("card-number");
+    var digits = card.value.replace(/\s+/g, "");
+    if (digits.length < 12) {
+      byId("promo-status").textContent = "Card number looks too short.";
+      return;
+    }
+    byId("order-ref").textContent = "BRW-" + Math.random().toString(36).slice(2, 8).toUpperCase();
+    byId("order-done").style.display = "block";
+  });
+  render();
+})();
+</script>
+</body>
+</html>
